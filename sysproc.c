@@ -89,3 +89,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int 
+sys_getprocs(void)
+{
+  int count;
+  for (p= ptable.proc; p< &ptable.proc![NPROC]; p++){
+    if (p->state != UNUSED){
+      count++;
+    }
+  }
+  return count;
+}
