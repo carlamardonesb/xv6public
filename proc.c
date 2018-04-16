@@ -138,6 +138,7 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  p->tickets = DEFAULT_TICKETS;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -333,8 +334,25 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE){
         continue;
+      }
+      int totalT = totalTickets();
+      int draw = -1;
+
+      if (totalT > 0 || draw <= 0){
+        draw = random(totalT);
+      }
+      
+      draw = draw - p->tickets;
+
+      // process with a great number of tickets has more probability to put draw to 0 or negative and execute
+      
+      if(draw >= 0){
+        continue;
+      }	
+
+      if(p != 0){
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -349,9 +367,9 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+      }
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -532,3 +550,55 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+/* This method is used to generate a random number, between 0 and M
+This is a modified version of the LFSR alogrithm
+found here: http://goo.gl/At4AIC */
+int
+random(int max) {
+
+  if(max <= 0) {
+    return 1;
+  }
+
+  static int z1 = 12345; // 12345 for rest of zx
+  static int z2 = 12345; // 12345 for rest of zx
+  static int z3 = 12345; // 12345 for rest of zx
+  static int z4 = 12345; // 12345 for rest of zx
+
+  int b;
+  b = (((z1 << 6) ^ z1) >> 13);
+  z1 = (((z1 & 4294967294) << 18) ^ b);
+  b = (((z2 << 2) ^ z2) >> 27);
+  z2 = (((z2 & 4294967288) << 2) ^ b);
+  b = (((z3 << 13) ^ z3) >> 21);
+  z3 = (((z3 & 4294967280) << 7) ^ b);
+  b = (((z4 << 3) ^ z4) >> 12);
+  z4 = (((z4 & 4294967168) << 13) ^ b);
+
+  // if we have an argument, then we can use it
+  int rand = ((z1 ^ z2 ^ z3 ^ z4)) % max;
+
+  if(rand < 0) {
+    rand = rand * -1;
+  }
+
+  return rand;
+}
+
+/* This method counts the total number of tickets that the runnable processes have
+(the lottery is done only of the process which can execute) */
+int
+totalTickets(void) {
+
+	struct proc *p;
+	int total = 0;
+	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+		if (p->state == RUNNABLE) {
+			total += p->tickets;
+		}
+	}
+
+	return total;
+}
+
