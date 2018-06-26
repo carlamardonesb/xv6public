@@ -602,3 +602,37 @@ totalTickets(void) {
 	return total;
 }
 
+//https://stackoverflow.com/questions/46807664/how-to-get-pgdir-in-xv6
+
+int addresstranslate(char* virtual_address)
+{
+    int physical_address;
+    pde_t *pgdir,*pgtab,*pde;
+
+    //must initialise pgdir
+    struct proc *curproc = myproc();
+    curproc->pgdir
+
+    pde = &pgdir[PDX(virtual_address)];
+    if(*pde & PTE_P){
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+    }
+    else
+    {
+    cprintf("\n Ese PageTableEntry (PTE) no existe! - Dirección Virtual Inválida\n”);
+    return -1;
+    }
+    cprintf("\n ----------------- \n");
+    cprintf(" PageDirectoryEntry (PDE): %d\n",*pde);
+    cprintf(" PTE_P : %d\n",PTE_P);
+    cprintf("\n ----------------- \n");
+
+    //uva2ka
+    pte_t *pte;
+    pte = &pgtab[PTX(virtual_address)];
+    physical_address=(char*)V2P(PTE_ADDR(*pte));
+
+    cprintf("Dirección Física: %d\n",physical_address);
+
+    return 0;
+}
